@@ -197,6 +197,9 @@ kbd {
   gap: .4rem;
   overflow-x: auto;
   scrollbar-width: none;
+  /* 右端をぼかして「まだ続きがある」ことを示す */
+  mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent 100%);
+  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent 100%);
 }
 .filters::-webkit-scrollbar { display: none; }
 
@@ -222,6 +225,21 @@ kbd {
 }
 @media (prefers-color-scheme: dark) {
   .chip.is-on { color: #12161a; }
+}
+
+/* お気に入り・履歴はカテゴリと区切って見せる */
+.chip--special { border-style: dashed; }
+.chip--special + .chip:not(.chip--special) {
+  margin-left: .5rem;
+  position: relative;
+}
+.chip--special + .chip:not(.chip--special)::before {
+  content: "";
+  position: absolute;
+  left: -.3rem;
+  top: 15%;
+  bottom: 15%;
+  border-left: 1px solid var(--line);
 }
 
 /* ======================= レイアウト ======================= */
@@ -262,6 +280,9 @@ kbd {
 .item {
   display: block;
   width: 100%;
+  /* 上に固定した検索バーの下に隠れないようにする */
+  scroll-margin-top: calc(var(--appbar-h) + .6rem);
+  scroll-margin-bottom: 3.2rem;
   text-align: left;
   font: inherit;
   cursor: pointer;
@@ -358,7 +379,30 @@ mark {
   padding: 1.3rem 1.4rem 1.6rem;
 }
 
-.detail__head { border-bottom: 2px solid var(--accent); padding-bottom: .7rem; }
+.detail__head {
+  position: relative;
+  border-bottom: 2px solid var(--accent);
+  padding-bottom: .7rem;
+  padding-right: 2.6rem;
+}
+
+.star {
+  position: absolute;
+  top: -.2rem;
+  right: 0;
+  width: 2.1rem;
+  height: 2.1rem;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: var(--card);
+  color: var(--ink-faint);
+  font-size: 1.05rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: .13s;
+}
+.star:hover { border-color: var(--lv-mid); color: var(--lv-mid); }
+.star.is-on { color: var(--lv-mid); border-color: var(--lv-mid); }
 
 .detail__cat {
   font-size: .7rem;

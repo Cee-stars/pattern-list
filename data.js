@@ -24,6 +24,8 @@ const CATEGORIES = [
   "接続詞・副詞節",
   "強調・倒置・省略",
   "助動詞",
+  "時制・態",
+  "名詞節・疑問",
   "名詞構文・無生物主語"
 ];
 
@@ -1413,6 +1415,288 @@ const ENTRIES = [
     ],
     note: "want to より丁寧。would have liked to have done は「…したかったのに」。",
     keys: ["丁寧", "願望"]
+  },
+
+  /* ===================== 時制・態 ===================== */
+  {
+    id: "tns-01",
+    pattern: "have done（現在完了）",
+    jp: "…してしまった／…したことがある／ずっと…している",
+    cat: "時制・態",
+    level: "基本",
+    ex: [
+      { en: "I have just finished my homework.", ja: "ちょうど宿題を終えたところだ。（完了）" },
+      { en: "She has been to Paris twice.", ja: "彼女は2度パリに行ったことがある。（経験）" }
+    ],
+    note: "完了・結果・経験・継続の4用法。yesterday など過去の一点を示す語とは一緒に使えない。",
+    keys: ["完了", "経験", "継続", "現在完了"]
+  },
+  {
+    id: "tns-02",
+    pattern: "have been doing（現在完了進行形）",
+    jp: "ずっと…し続けている",
+    cat: "時制・態",
+    level: "標準",
+    ex: [
+      { en: "It has been raining since this morning.", ja: "今朝からずっと雨が降っている。" }
+    ],
+    note: "動作動詞の継続に使う。know, live などの状態動詞は普通の現在完了で継続を表す。",
+    keys: ["継続", "状態動詞", "since", "for"]
+  },
+  {
+    id: "tns-03",
+    pattern: "had done（過去完了）",
+    jp: "（その時までに）…してしまっていた",
+    cat: "時制・態",
+    level: "標準",
+    ex: [
+      { en: "The train had already left when I got to the station.", ja: "駅に着いたときには列車はもう出てしまっていた。" }
+    ],
+    note: "過去のある時点を基準にした完了・経験・継続、および過去より前（大過去）を表す。",
+    keys: ["大過去", "過去完了", "基準時"]
+  },
+  {
+    id: "tns-04",
+    pattern: "will have done（未来完了）",
+    jp: "（その時までには）…してしまっているだろう",
+    cat: "時制・態",
+    level: "標準",
+    ex: [
+      { en: "I will have read this book by next Sunday.", ja: "次の日曜までにはこの本を読み終えているだろう。" }
+    ],
+    note: "by + 未来の時点 とともに使うことが多い。",
+    keys: ["未来完了", "by", "期限"]
+  },
+  {
+    id: "tns-05",
+    pattern: "時・条件の副詞節では未来を現在形で",
+    jp: "…したら、…するときは",
+    cat: "時制・態",
+    level: "基本",
+    ex: [
+      { en: "I will call you when he comes back.", ja: "彼が戻ったら電話します。" },
+      { en: "If it rains tomorrow, we will stay home.", ja: "明日雨なら家にいます。" }
+    ],
+    note: "when, if, until, as soon as, before, after などの副詞節内では will を使わない。同じ when でも名詞節（…かどうか）なら will を使える。",
+    keys: ["will 不可", "副詞節", "名詞節との区別", "頻出ミス"]
+  },
+  {
+    id: "tns-06",
+    pattern: "時制の一致",
+    jp: "主節が過去なら従属節も過去に",
+    cat: "時制・態",
+    level: "標準",
+    ex: [
+      { en: "He said that he was busy.", ja: "彼は忙しいと言った。" },
+      { en: "She told me that she had lost her key.", ja: "彼女は鍵をなくしたと私に言った。" }
+    ],
+    note: "不変の真理・現在も続く習慣・歴史上の事実は一致させない。仮定法も一致させない。",
+    keys: ["例外", "不変の真理", "間接話法"]
+  },
+  {
+    id: "tns-07",
+    pattern: "現在形で表す確定した未来",
+    jp: "…することになっている",
+    cat: "時制・態",
+    level: "標準",
+    ex: [
+      { en: "The train leaves at six tomorrow morning.", ja: "列車は明朝6時に出発する。" }
+    ],
+    note: "時刻表・行事など確定した予定は現在形。個人の予定は現在進行形（I am meeting him tonight.）。",
+    keys: ["予定", "現在進行形", "時刻表"]
+  },
+  {
+    id: "tns-08",
+    pattern: "It is ~ since S V / S has been dead for ~",
+    jp: "…してから〜になる",
+    cat: "時制・態",
+    level: "発展",
+    ex: [
+      { en: "It is five years since he died.", ja: "彼が亡くなってから5年になる。" },
+      { en: "He has been dead for five years.", ja: "彼が亡くなって5年になる。" }
+    ],
+    note: "死ぬ・結婚するなど瞬間的な動詞は、継続を表すとき状態表現に置き換える（die → be dead）。",
+    keys: ["継続", "瞬間動詞", "書き換え"]
+  },
+  {
+    id: "tns-09",
+    pattern: "be done（受動態）",
+    jp: "…される",
+    cat: "時制・態",
+    level: "基本",
+    ex: [
+      { en: "This temple was built in the 8th century.", ja: "この寺は8世紀に建てられた。" }
+    ],
+    note: "行為者が不明・重要でないときや、話題の中心を目的語に置きたいときに使う。by ~ は省略されることが多い。",
+    keys: ["受動態", "by の省略"]
+  },
+  {
+    id: "tns-10",
+    pattern: "be being done / have been done",
+    jp: "…されているところだ／…されてしまった",
+    cat: "時制・態",
+    level: "標準",
+    ex: [
+      { en: "The road is being repaired now.", ja: "その道路は今修理されているところだ。" },
+      { en: "The letter has been sent already.", ja: "その手紙はもう送られた。" }
+    ],
+    note: "進行形の受動態と完了形の受動態。be + being + done、have + been + done の形を押さえる。",
+    keys: ["進行形の受動態", "完了形の受動態"]
+  },
+  {
+    id: "tns-11",
+    pattern: "群動詞の受動態（be laughed at）",
+    jp: "…される（前置詞を残す）",
+    cat: "時制・態",
+    level: "標準",
+    ex: [
+      { en: "He was laughed at by everyone.", ja: "彼はみんなに笑われた。" },
+      { en: "The baby was taken care of by her grandmother.", ja: "その赤ちゃんは祖母に世話された。" }
+    ],
+    note: "動詞句はひとかたまりで扱い、前置詞を落とさない（× He was laughed by ~）。",
+    keys: ["句動詞", "前置詞を残す", "頻出ミス"]
+  },
+  {
+    id: "tns-12",
+    pattern: "by 以外の前置詞をとる受動態",
+    jp: "…に興味がある／…で知られている",
+    cat: "時制・態",
+    level: "標準",
+    ex: [
+      { en: "I am interested in classical music.", ja: "私はクラシック音楽に興味がある。" },
+      { en: "The mountain is covered with snow.", ja: "その山は雪で覆われている。" }
+    ],
+    note: "be known to（人に知られている）/ be known for（〜で有名）/ be known as（〜として知られる）は使い分けに注意。他に be surprised at, be satisfied with など。",
+    keys: ["be known to", "be known for", "be covered with", "感情の受動態"]
+  },
+
+  /* ===================== 名詞節・疑問 ===================== */
+  {
+    id: "cls-01",
+    pattern: "that 節（名詞節）",
+    jp: "…ということ",
+    cat: "名詞節・疑問",
+    level: "基本",
+    ex: [
+      { en: "I think that he is right.", ja: "彼は正しいと思う。" },
+      { en: "The trouble is that we have no money.", ja: "困ったことに私たちには金がない。" }
+    ],
+    note: "主語・目的語・補語になる。目的語のときは that を省略できる。主語のときは形式主語 It を立てるのが普通。",
+    keys: ["名詞節", "that の省略", "形式主語", "補語"]
+  },
+  {
+    id: "cls-02",
+    pattern: "同格の that（the fact that S V）",
+    jp: "…という〜",
+    cat: "名詞節・疑問",
+    level: "標準",
+    ex: [
+      { en: "The fact that he lied surprised us.", ja: "彼が嘘をついたという事実は私たちを驚かせた。" }
+    ],
+    note: "fact, news, idea, hope, belief などの後ろ。関係代名詞の that と違い、that 以下が完全な文になる点で見分ける。",
+    keys: ["同格", "関係代名詞との区別", "完全な文"]
+  },
+  {
+    id: "cls-03",
+    pattern: "whether / if 節（…かどうか）",
+    jp: "…かどうか",
+    cat: "名詞節・疑問",
+    level: "標準",
+    ex: [
+      { en: "I am not sure whether he will agree.", ja: "彼が同意するかどうかわからない。" }
+    ],
+    note: "主語・補語・前置詞の目的語になれるのは whether だけ。if は他動詞の目的語のときのみ。",
+    keys: ["if との違い", "前置詞の後ろ", "名詞節"]
+  },
+  {
+    id: "cls-04",
+    pattern: "間接疑問（疑問詞 + S + V）",
+    jp: "…かということ",
+    cat: "名詞節・疑問",
+    level: "基本",
+    ex: [
+      { en: "I do not know where he lives.", ja: "彼がどこに住んでいるか知らない。" },
+      { en: "Tell me what you want.", ja: "何が欲しいのか言ってください。" }
+    ],
+    note: "文中に埋め込むと平叙文の語順に戻る（× where does he live）。疑問詞が主語ならそのままの語順。",
+    keys: ["語順", "埋め込み疑問", "頻出ミス"]
+  },
+  {
+    id: "cls-05",
+    pattern: "疑問詞 + to do",
+    jp: "何を…すべきか／どう…したらよいか",
+    cat: "名詞節・疑問",
+    level: "標準",
+    ex: [
+      { en: "I do not know what to say.", ja: "何と言えばよいかわからない。" },
+      { en: "Please tell me how to get to the station.", ja: "駅への行き方を教えてください。" }
+    ],
+    note: "疑問詞 + S + should do に書き換えられる。why to do とは言わない。",
+    keys: ["書き換え", "should", "why to 不可"]
+  },
+  {
+    id: "cls-06",
+    pattern: "What do you think S V ?",
+    jp: "…は何だと思いますか",
+    cat: "名詞節・疑問",
+    level: "発展",
+    ex: [
+      { en: "What do you think he wants?", ja: "彼は何が欲しいと思いますか。" },
+      { en: "Do you know what he wants?", ja: "彼が何を欲しがっているか知っていますか。" }
+    ],
+    note: "think, believe, suppose などは Yes / No で答えられないため疑問詞を文頭に出す。know, wonder なら Do you know ~? の語順のまま。",
+    keys: ["語順", "Yes/No で答えられない", "間接疑問"]
+  },
+  {
+    id: "cls-07",
+    pattern: "It is 形容詞 that S (should) do",
+    jp: "…とは〜だ（感情・判断）",
+    cat: "名詞節・疑問",
+    level: "発展",
+    ex: [
+      { en: "It is natural that he should be angry.", ja: "彼が怒るのも当然だ。" },
+      { en: "It is necessary that you be there on time.", ja: "君が時間どおりそこにいる必要がある。" }
+    ],
+    note: "natural, strange, surprising などの感情・判断では should、necessary, important などの要求では原形（仮定法現在）。",
+    keys: ["感情のshould", "仮定法現在", "形式主語"]
+  },
+  {
+    id: "cls-08",
+    pattern: "I wonder if / whether S V",
+    jp: "…かしら／…していただけませんか",
+    cat: "名詞節・疑問",
+    level: "標準",
+    ex: [
+      { en: "I wonder if he is at home.", ja: "彼は家にいるのかしら。" },
+      { en: "I wonder if you could help me.", ja: "手伝っていただけないでしょうか。" }
+    ],
+    note: "過去形にすると（I was wondering if ~）さらに丁寧になる。",
+    keys: ["丁寧な依頼", "婉曲", "仮定法"]
+  },
+  {
+    id: "cls-09",
+    pattern: "疑問詞 + on earth / in the world",
+    jp: "いったい何が…",
+    cat: "名詞節・疑問",
+    level: "発展",
+    ex: [
+      { en: "What on earth are you doing here?", ja: "いったいここで何をしているんだ。" }
+    ],
+    note: "疑問詞の直後に置いて疑問を強める。ever を使った whatever are you doing も同じ働き。",
+    keys: ["強調", "ever", "疑問文"]
+  },
+  {
+    id: "cls-10",
+    pattern: "付加疑問・否定疑問への答え方",
+    jp: "…ですよね／いいえ、…します",
+    cat: "名詞節・疑問",
+    level: "標準",
+    ex: [
+      { en: "You are tired, are you not?", ja: "疲れているよね。" },
+      { en: "Do you not like it? — Yes, I do.", ja: "好きじゃないの。—いいえ、好きです。" }
+    ],
+    note: "肯定文には否定の付加疑問、否定文には肯定の付加疑問。答えは日本語の「はい・いいえ」と逆になることがあり、内容が肯定なら Yes。",
+    keys: ["付加疑問", "否定疑問", "Yes No の逆転"]
   },
 
   /* ===================== 名詞構文・無生物主語 ===================== */

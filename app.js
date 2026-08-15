@@ -19,10 +19,50 @@
 
   /* ---------- 状態 ---------- */
   const LEVEL_ORDER = { "基本": 0, "標準": 1, "発展": 2 };
+  const FAV_CAT = "@fav";   // 絞り込みの特別枠
+  const HIST_CAT = "@hist";
+  const HIST_MAX = 40;
+
   let currentCat = "*";     // 絞り込み中のカテゴリ
   let results = [];         // 表示中の項目（描画順）
   let activeIndex = -1;     // キーボードで選択中の位置
   let selectedId = null;    // 語釈を表示中の項目
+
+  /* ---------- お気に入り・履歴（端末に保存） ---------- */
+
+  function load(key) {
+    try {
+      const v = JSON.parse(localStorage.getItem(key) || "[]");
+      return Array.isArray(v) ? v.filter(x => typeof x === "string") : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function save(key, val) {
+    try { localStorage.setItem(key, JSON.stringify(val)); } catch (e) { /* 保存できなくても動く */ }
+  }
+
+  let favs = load("kobun.fav");
+  let hist = load("kobun.hist");
+
+  function isFav(id) { return favs.indexOf(id) !== -1; }
+
+  function toggleFav(id) {
+    const i = favs.indexOf(id);
+    if (i === -1) favs.unshift(id); else favs.splice(i, 1);
+    save("kobun.fav", favs);
+    updateChipCounts();
+  }
+
+  function pushHist(id) {
+    const i = hist.indexOf(id);
+    if (i !== -1) hist.splice(i, 1);
+    hist.unshift(id);
+    if (hist.length > HIST_MAX) hist.length = HIST_MAX;
+    save("kobun.hist", hist);
+    updateChipCounts();
+  }
 
   /* ===========================================================
      1. 文字の正規化
@@ -95,9 +135,19 @@
     return s;
   }
 
+  /* 絞り込み中の枠に入っている項目だけを、その枠の並び順で取り出す */
+  function pickPool() {
+    if (currentCat === FAV_CAT || currentCat === HIST_CAT) {
+      const ids = currentCat === FAV_CAT ? favs : hist;   // 新しく登録したものが先頭
+      const byId = new Map(INDEX.map(r => [r.entry.id, r]));
+      return ids.map(id => byId.get(id)).filter(Boolean);
+    }
+    return INDEX.filter(r => currentCat === "*" || r.entry.cat === currentCat);
+  }
+
   function search(raw) {
     const tokens = tokenize(raw);
-    const pool = INDEX.filter(r => currentCat === "*" || r.entry.cat === currentCat);
+    const pool = pickPool();
 
     if (!tokens.length) {
       // 無入力のときは辞書の本文と同じ並び（カテゴリ順 → 収録順）
@@ -196,7 +246,9 @@
   function render(raw) {
     results = search(raw);
     const tokens = results.length ? results[0].tokens : tokenize(raw);
-    const grouped = tokens.length === 0;   // 無入力ならカテゴリ見出しを挟む
+    // 無入力かつ全件表示のときだけカテゴリ見出しを挟む
+    // （お気に入り・履歴は登録順に並べたいので挟まない）
+    const grouped = tokens.length === 0 && currentCat === "*";
 
     let html = "";
     let lastCat = null;
@@ -224,11 +276,12 @@
 
     $list.innerHTML = html;
     $empty.hidden = results.length > 0;
+    $empty.innerHTML = emptyMessage();
 
     const q = raw.trim();
     if (!q) {
       $hits.innerHTML = "全 <b>" + results.length + "</b> 項目" +
-        (currentCat === "*" ? "" : "（" + esc(currentCat) + "）");
+        (currentCat === "*" ? "" : "（" + esc(catLabel(currentCat)) + "）");
     } else {
       $hits.innerHTML = "<b>" + results.length + "</b> 件ヒット　" +
         '<span style="opacity:.75">' + esc(q) + "</span>";
@@ -248,6 +301,29 @@
       markActive();
       if (!q && !selectedId) showPlaceholder();
     }
+  }
+
+  function catLabel(c) {
+    if (c === FAV_CAT) return "お気に入り";
+    if (c === HIST_CAT) return "履歴";
+    return c;
+  }
+
+  /* ヒット0件のときの案内は、絞り込み中の枠によって出し分ける */
+  function emptyMessage() {
+    const typing = $q.value.trim() !== "";
+
+    if (!typing && currentCat === FAV_CAT) {
+      return '<span class="empty__big">お気に入りはまだありません</span>' +
+             '<span class="empty__sub">語釈の右上の ☆ を押すと、ここにたまっていきます。</span>';
+    }
+    if (!typing && currentCat === HIST_CAT) {
+      return '<span class="empty__big">履歴はまだありません</span>' +
+             '<span class="empty__sub">一度引いた構文が新しい順に並びます。</span>';
+    }
+    return '<span class="empty__big">見つかりませんでした</span>' +
+           '<span class="empty__sub">別のことば、または一部だけで検索してみてください。<br>' +
+           "例: <em>as if</em> ／ <em>倒置</em> ／ <em>しても無駄</em></span>";
   }
 
   /* ---------- キーボード選択 ---------- */
@@ -291,15 +367,16 @@
     const keys = new Set((entry.keys || []).map(norm));
     const scored = ENTRIES
       .filter(e => e.id !== entry.id)
-      .map(e => {
+      .map((e, i) => {
+        // 同じ文法分野を優先し、共有キーワードの数で細かく順位をつける
         let s = 0;
-        if (e.cat === entry.cat) s += 2;
-        for (const k of (e.keys || [])) if (keys.has(norm(k))) s += 3;
+        if (e.cat === entry.cat) s += 3;
+        for (const k of (e.keys || [])) if (keys.has(norm(k))) s += 2;
         if (norm(e.note || "").includes(norm(entry.pattern.split(" ")[0]))) s += 1;
-        return { e, s };
+        return { e, s, i };
       })
       .filter(x => x.s > 0)
-      .sort((a, b) => b.s - a.s)
+      .sort((a, b) => (b.s - a.s) || (a.i - b.i))
       .slice(0, 4);
     return scored.map(x => x.e);
   }
@@ -310,8 +387,14 @@
 
     let html = '<button type="button" class="detail__close" id="sheetClose">閉じる</button>';
 
+    const on = isFav(entry.id);
     html +=
       '<div class="detail__head">' +
+        '<button type="button" class="star' + (on ? " is-on" : "") + '" id="star"' +
+          ' aria-pressed="' + on + '"' +
+          ' title="' + (on ? "お気に入りから外す" : "お気に入りに入れる") + '">' +
+          (on ? "★" : "☆") +
+        "</button>" +
         '<div class="detail__cat">' + esc(entry.cat) + "</div>" +
         '<h2 class="detail__pattern">' + hl(entry.pattern, t) + "</h2>" +
         '<p class="detail__jp">' + hl(entry.jp, t) + "</p>" +
@@ -364,10 +447,12 @@
     if (history.replaceState) history.replaceState(null, "", "#" + entry.id);
   }
 
+  /* 明示的に開いたときだけ履歴に残す（入力中の自動プレビューは残さない） */
   function openById(id, tokens) {
     const e = ENTRIES.find(x => x.id === id);
     if (!e) return;
     showDetail(e, tokens || [], true);
+    pushHist(id);
   }
 
   /* ===========================================================
@@ -387,15 +472,26 @@
     $q.focus();
   });
 
-  // カテゴリ絞り込み
-  CATEGORIES.forEach(c => {
+  // 絞り込みチップ（お気に入り・履歴 → カテゴリ）
+  function addChip(cat, label, cls) {
     const b = document.createElement("button");
     b.type = "button";
-    b.className = "chip";
-    b.dataset.cat = c;
-    b.textContent = c;
+    b.className = "chip" + (cls ? " " + cls : "");
+    b.dataset.cat = cat;
+    b.textContent = label;
     $filters.appendChild(b);
-  });
+    return b;
+  }
+
+  const $favChip  = addChip(FAV_CAT, "★ お気に入り", "chip--special");
+  const $histChip = addChip(HIST_CAT, "履歴", "chip--special");
+  CATEGORIES.forEach(c => addChip(c, c));
+
+  function updateChipCounts() {
+    $favChip.textContent  = favs.length ? "★ お気に入り " + favs.length : "★ お気に入り";
+    $histChip.textContent = hist.length ? "履歴 " + hist.length : "履歴";
+  }
+  updateChipCounts();
 
   $filters.addEventListener("click", e => {
     const chip = e.target.closest(".chip");
@@ -418,6 +514,19 @@
   $detail.addEventListener("click", e => {
     const close = e.target.closest("#sheetClose");
     if (close) { $detail.classList.remove("is-open"); return; }
+
+    const star = e.target.closest("#star");
+    if (star) {
+      toggleFav(selectedId);
+      const on = isFav(selectedId);
+      star.classList.toggle("is-on", on);
+      star.textContent = on ? "★" : "☆";
+      star.setAttribute("aria-pressed", String(on));
+      star.title = on ? "お気に入りから外す" : "お気に入りに入れる";
+      // お気に入り一覧を見ている最中なら、その場で並びを更新する
+      if (currentCat === FAV_CAT) render($q.value);
+      return;
+    }
 
     const key = e.target.closest(".key");
     if (key) {
