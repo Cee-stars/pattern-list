@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="英語の重要構文を辞書のように検索できるアプリ。入力するそばから候補が絞り込まれます。">
+<meta name="theme-color" content="#1b3a5c">
+<title>構文辞書</title>
+<link rel="stylesheet" href="styles.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📘</text></svg>">
+</head>
+<body>
+
+<!-- ============ 検索欄（常に最上部・固定） ============ -->
+<header class="appbar">
+  <div class="appbar__inner">
+    <div class="brand">
+      <span class="brand__mark" aria-hidden="true">構</span>
+      <h1 class="brand__name">構文辞書</h1>
+    </div>
+
+    <div class="searchbox" role="search">
+      <svg class="searchbox__icon" viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="11" cy="11" r="7"></circle><line x1="16.5" y1="16.5" x2="21" y2="21"></line>
+      </svg>
+      <input
+        id="q"
+        type="search"
+        class="searchbox__input"
+        placeholder="構文・意味・例文で検索（例: too to / 仮定法 / せずにはいられない）"
+        autocomplete="off"
+        autocapitalize="off"
+        autocorrect="off"
+        spellcheck="false"
+        aria-label="構文を検索"
+        aria-controls="list"
+        aria-describedby="hits">
+      <button id="clear" class="searchbox__clear" type="button" aria-label="検索欄を消す" hidden>&times;</button>
+      <kbd class="searchbox__kbd" aria-hidden="true">/</kbd>
+    </div>
+  </div>
+
+  <div class="filters" id="filters">
+    <button class="chip is-on" data-cat="*" type="button">すべて</button>
+  </div>
+</header>
+
+<!-- ============ 本体 ============ -->
+<main class="layout">
+
+  <!-- 見出し一覧 -->
+  <section class="pane pane--list" aria-label="見出し一覧">
+    <p class="hits" id="hits" role="status" aria-live="polite"></p>
+    <div id="list" class="list" role="listbox" aria-label="検索結果"></div>
+    <p class="empty" id="empty" hidden>
+      <span class="empty__big">見つかりませんでした</span>
+      <span class="empty__sub">別のことば、または一部だけで検索してみてください。<br>例: <em>as if</em> ／ <em>倒置</em> ／ <em>しても無駄</em></span>
+    </p>
+  </section>
+
+  <!-- 語釈 -->
+  <section class="pane pane--detail" id="detail" aria-label="語釈" aria-live="polite"></section>
+
+</main>
+
+<footer class="foot">
+  <span>収録 <b id="total">0</b> 項目</span>
+  <span class="foot__sep">/</span>
+  <span><kbd>↑</kbd><kbd>↓</kbd> 選択　<kbd>Enter</kbd> 表示　<kbd>Esc</kbd> 消去</span>
+</footer>
+
+<script src="data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
