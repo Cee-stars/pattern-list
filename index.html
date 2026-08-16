@@ -38,6 +38,10 @@
       <button id="clear" class="searchbox__clear" type="button" aria-label="検索欄を消す" hidden>&times;</button>
       <kbd class="searchbox__kbd" aria-hidden="true">/</kbd>
     </div>
+
+    <button id="add" class="addbtn" type="button" title="自分の構文を作る（N）">
+      <span class="addbtn__plus" aria-hidden="true">＋</span><span class="addbtn__label">作る</span>
+    </button>
   </div>
 
   <div class="filters" id="filters">
@@ -50,6 +54,12 @@
 
   <!-- 見出し一覧 -->
   <section class="pane pane--list" aria-label="見出し一覧">
+    <div class="mytools" id="mytools" hidden>
+      <button type="button" class="mini mini--go" data-act="new">＋ 新しく作る</button>
+      <button type="button" class="mini" data-act="export">書き出し</button>
+      <button type="button" class="mini" data-act="import">読み込み</button>
+      <input type="file" id="importFile" accept="application/json,.json" hidden>
+    </div>
     <p class="hits" id="hits" role="status" aria-live="polite"></p>
     <div id="list" class="list" role="listbox" aria-label="検索結果"></div>
     <p class="empty" id="empty" hidden>
@@ -64,10 +74,81 @@
 </main>
 
 <footer class="foot">
-  <span>収録 <b id="total">0</b> 項目</span>
+  <span>収録 <b id="total">0</b> 項目<b class="foot__mine" id="mineCount"></b></span>
   <span class="foot__sep">/</span>
-  <span><kbd>↑</kbd><kbd>↓</kbd> 選択　<kbd>Enter</kbd> 表示　<kbd>Esc</kbd> 消去</span>
+  <span><kbd>↑</kbd><kbd>↓</kbd> 選択　<kbd>Enter</kbd> 表示　<kbd>N</kbd> 作成　<kbd>Esc</kbd> 消去</span>
 </footer>
+
+<!-- ============ 自分の構文をつくるフォーム ============ -->
+<dialog id="editor" class="modal" aria-labelledby="editorTitle">
+  <form id="editorForm" class="form">
+
+    <div class="form__bar">
+      <h2 class="form__title" id="editorTitle">構文をつくる</h2>
+      <button type="button" class="form__x" data-close aria-label="閉じる">&times;</button>
+    </div>
+
+    <div class="form__body">
+      <label class="field">
+        <span class="field__label">構文（英語）<b class="req">必須</b></span>
+        <input id="f-pattern" class="field__input field__input--en" type="text" maxlength="120"
+               placeholder="be about to do" autocomplete="off" autocapitalize="off" spellcheck="false">
+      </label>
+
+      <label class="field">
+        <span class="field__label">意味（日本語）<b class="req">必須</b></span>
+        <input id="f-jp" class="field__input" type="text" maxlength="120"
+               placeholder="まさに…しようとしている" autocomplete="off">
+      </label>
+
+      <div class="field__row">
+        <label class="field">
+          <span class="field__label">カテゴリ</span>
+          <input id="f-cat" class="field__input" type="text" list="catlist" maxlength="30"
+                 placeholder="自作" autocomplete="off">
+          <datalist id="catlist"></datalist>
+        </label>
+        <label class="field field--narrow">
+          <span class="field__label">レベル</span>
+          <select id="f-level" class="field__input">
+            <option>基本</option>
+            <option selected>標準</option>
+            <option>発展</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="field">
+        <span class="field__label">例文</span>
+        <div id="f-ex" class="exlist"></div>
+        <button type="button" class="mini" id="exAdd">＋ 例文を足す</button>
+      </div>
+
+      <label class="field">
+        <span class="field__label">ポイント</span>
+        <textarea id="f-note" class="field__input field__input--area" rows="3" maxlength="400"
+                  placeholder="近い未来を表す。be going to より切迫している。"></textarea>
+      </label>
+
+      <label class="field">
+        <span class="field__label">関連キーワード</span>
+        <input id="f-keys" class="field__input" type="text" maxlength="200"
+               placeholder="近接未来, be going to" autocomplete="off">
+        <span class="field__hint">カンマ区切り。画面には出ませんが検索で引っかかります。</span>
+      </label>
+
+      <p class="form__err" id="editorErr" role="alert" hidden></p>
+    </div>
+
+    <div class="form__foot">
+      <button type="button" class="mini mini--danger" id="editorDelete" hidden>削除</button>
+      <span class="form__spacer"></span>
+      <button type="button" class="mini" data-close>キャンセル</button>
+      <button type="submit" class="mini mini--go">保存</button>
+    </div>
+
+  </form>
+</dialog>
 
 <script src="data.js"></script>
 <script src="app.js"></script>

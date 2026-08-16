@@ -181,6 +181,8 @@ kbd {
   place-items: center;
 }
 .searchbox__clear:hover { background: var(--ink-faint); color: var(--card); }
+/* display を指定してあるので、hidden を効かせるには打ち消しが要る */
+.searchbox__clear[hidden] { display: none; }
 
 .searchbox__kbd {
   position: absolute;
@@ -511,6 +513,227 @@ mark {
 }
 .placeholder__mark { font-size: 2.2rem; display: block; margin-bottom: .6rem; opacity: .5; }
 
+/* ======================= 自作の項目 ======================= */
+
+/* 検索バー右の「＋ 作る」 */
+.addbtn {
+  flex: none;
+  font: inherit;
+  font-size: .82rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: .18rem;
+  padding: .5rem .82rem;
+  border-radius: 999px;
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: var(--paper);
+  cursor: pointer;
+  white-space: nowrap;
+  box-shadow: var(--shadow-s);
+  transition: .13s;
+}
+.addbtn:hover { background: var(--accent-sub); border-color: var(--accent-sub); }
+.addbtn:focus-visible { outline: 2px solid var(--accent-sub); outline-offset: 2px; }
+.addbtn__plus { font-size: .95rem; line-height: 1; }
+@media (prefers-color-scheme: dark) {
+  .addbtn { color: #12161a; }
+}
+
+/* 小さめのボタン（フォームやマイ構文の道具立てで使い回す） */
+.mini {
+  font: inherit;
+  font-size: .78rem;
+  padding: .34rem .8rem;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--card);
+  color: var(--ink-soft);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: .13s;
+}
+.mini:hover { border-color: var(--accent-sub); color: var(--accent-sub); }
+.mini:focus-visible { outline: 2px solid var(--accent-sub); outline-offset: 2px; }
+.mini:disabled { opacity: .45; cursor: default; }
+.mini:disabled:hover { border-color: var(--line); color: var(--ink-soft); }
+
+.mini--go {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--paper);
+  font-weight: 600;
+}
+.mini--go:hover { background: var(--accent-sub); border-color: var(--accent-sub); color: var(--paper); }
+@media (prefers-color-scheme: dark) {
+  .mini--go, .mini--go:hover { color: #12161a; }
+}
+
+.mini--danger { color: var(--lv-adv); }
+.mini--danger:hover { border-color: var(--lv-adv); color: var(--lv-adv); }
+
+/* マイ構文の一覧に出る道具立て */
+.mytools {
+  display: flex;
+  gap: .4rem;
+  flex-wrap: wrap;
+  margin-bottom: .6rem;
+}
+.mytools[hidden] { display: none; }
+
+.tag--mine { color: var(--accent-sub); border-color: currentColor; }
+
+.detail__own {
+  margin-top: .6rem;
+  display: flex;
+  gap: .4rem;
+}
+
+.foot__mine { color: var(--accent-sub); font-weight: 600; }
+
+/* ======================= 作成フォーム ======================= */
+
+.modal {
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--card);
+  color: var(--ink);
+  box-shadow: var(--shadow-m);
+  width: min(560px, calc(100vw - 1.6rem));
+  max-height: min(86vh, 820px);
+  overflow: hidden;
+}
+.modal[open] { display: flex; flex-direction: column; }
+.modal::backdrop { background: rgba(12, 15, 18, .5); }
+
+.form { display: flex; flex-direction: column; min-height: 0; }
+
+.form__bar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  padding: .85rem 1.1rem;
+  border-bottom: 1px solid var(--line);
+}
+.form__title {
+  margin: 0;
+  font-size: .95rem;
+  font-weight: 700;
+  letter-spacing: .08em;
+}
+.form__x {
+  margin-left: auto;
+  width: 1.9rem; height: 1.9rem;
+  border: none;
+  border-radius: 50%;
+  background: var(--line-soft);
+  color: var(--ink-soft);
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.form__x:hover { background: var(--line); color: var(--ink); }
+
+.form__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 1rem 1.1rem 1.2rem;
+  display: flex;
+  flex-direction: column;
+  gap: .9rem;
+}
+
+.field { display: flex; flex-direction: column; gap: .3rem; }
+.field__row { display: flex; gap: .7rem; }
+.field__row .field { flex: 1 1 auto; min-width: 0; }
+.field--narrow { flex: 0 0 7.5rem !important; }
+
+.field__label {
+  font-size: .74rem;
+  font-weight: 700;
+  letter-spacing: .1em;
+  color: var(--ink-faint);
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+}
+.req {
+  font-size: .62rem;
+  font-weight: 700;
+  letter-spacing: .06em;
+  color: var(--lv-adv);
+  border: 1px solid currentColor;
+  border-radius: 4px;
+  padding: 0 .26rem;
+}
+
+.field__input {
+  width: 100%;
+  font: inherit;
+  font-size: .92rem;
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  padding: .5rem .62rem;
+}
+.field__input:focus {
+  outline: none;
+  border-color: var(--accent-sub);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-sub) 20%, transparent);
+}
+.field__input::placeholder { color: var(--ink-faint); }
+.field__input--en { font-family: var(--font-en); }
+.field__input--area { line-height: 1.6; resize: vertical; }
+
+.field__hint { font-size: .7rem; color: var(--ink-faint); }
+.field > .mini { align-self: flex-start; }
+
+.exlist { display: flex; flex-direction: column; gap: .45rem; margin-bottom: .45rem; }
+.exrow {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: .35rem;
+  align-items: center;
+}
+.exrow__x {
+  width: 1.7rem; height: 1.7rem;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: var(--card);
+  color: var(--ink-faint);
+  font-size: .9rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.exrow__x:hover { border-color: var(--lv-adv); color: var(--lv-adv); }
+
+.form__err {
+  margin: 0;
+  font-size: .8rem;
+  line-height: 1.6;
+  color: var(--lv-adv);
+  background: color-mix(in srgb, var(--lv-adv) 12%, transparent);
+  border-radius: 8px;
+  padding: .5rem .7rem;
+}
+.form__err[hidden] { display: none; }
+
+.form__foot {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: .45rem;
+  padding: .75rem 1.1rem calc(.75rem + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--line);
+  background: var(--line-soft);
+}
+.form__spacer { flex: 1 1 auto; }
+
 /* ======================= フッター ======================= */
 
 .foot {
@@ -577,6 +800,27 @@ mark {
 
   .foot { display: none; }
   body { padding-bottom: 1rem; }
+
+  /* 「＋ 作る」は丸ボタンに縮める */
+  .appbar__inner { gap: .55rem; }
+  .addbtn { padding: .5rem; width: 2.4rem; justify-content: center; }
+  .addbtn__label { display: none; }
+  .addbtn__plus { font-size: 1.1rem; }
+
+  /* フォームは画面いっぱいの下じきに */
+  .modal {
+    width: 100vw;
+    max-width: none;
+    max-height: 92vh;
+    margin: auto auto 0;
+    border-radius: 16px 16px 0 0;
+    border-bottom: none;
+  }
+  .exrow { grid-template-columns: 1fr auto; }
+  .exrow .field__input { grid-column: 1; }
+  .exrow__x { grid-column: 2; grid-row: 1 / span 2; align-self: center; }
+  .field__row { flex-wrap: wrap; }
+  .field--narrow { flex: 1 1 100% !important; }
 }
 
 @media (prefers-reduced-motion: reduce) {

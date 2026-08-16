@@ -16,17 +16,31 @@
   const $empty   = document.getElementById("empty");
   const $detail  = document.getElementById("detail");
   const $total   = document.getElementById("total");
+  const $mineNum = document.getElementById("mineCount");
+  const $add     = document.getElementById("add");
+  const $mytools = document.getElementById("mytools");
+  const $file    = document.getElementById("importFile");
+  const $editor  = document.getElementById("editor");
+  const $form    = document.getElementById("editorForm");
+  const $err     = document.getElementById("editorErr");
+  const $del     = document.getElementById("editorDelete");
+  const $exList  = document.getElementById("f-ex");
+  const $catList = document.getElementById("catlist");
 
   /* ---------- 状態 ---------- */
   const LEVEL_ORDER = { "基本": 0, "標準": 1, "発展": 2 };
-  const FAV_CAT = "@fav";   // 絞り込みの特別枠
+  const FAV_CAT  = "@fav";   // 絞り込みの特別枠
   const HIST_CAT = "@hist";
+  const MINE_CAT = "@mine";
   const HIST_MAX = 40;
+  const MINE_FALLBACK_CAT = "自作";   // カテゴリ未入力のときの受け皿
+  const EX_MAX = 8;                   // 1項目に足せる例文の数
 
   let currentCat = "*";     // 絞り込み中のカテゴリ
   let results = [];         // 表示中の項目（描画順）
   let activeIndex = -1;     // キーボードで選択中の位置
   let selectedId = null;    // 語釈を表示中の項目
+  let editingId = null;     // フォームで編集中の項目（新規のときは null）
 
   /* ---------- お気に入り・履歴（端末に保存） ---------- */
 
@@ -65,6 +79,84 @@
   }
 
   /* ===========================================================
+     0. 自作の項目（マイ構文）
+     data.js に手を入れなくても、この場で項目を作れるようにする。
+     保存先はお気に入りと同じ localStorage。
+     読み込むデータは外から来ることもある（書き出したファイルの読み込み）ので、
+     使う前に必ず形を整えてから ENTRIES と同じ土俵に乗せる。
+     =========================================================== */
+
+  const USER_KEY = "kobun.mine";
+
+  function text(v, max, multiline) {
+    if (typeof v !== "string") return "";
+    const s = multiline ? v.replace(/\r\n?/g, "\n") : v.replace(/\s+/g, " ");
+    return s.trim().slice(0, max);
+  }
+
+  function newId() {
+    return "my-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 6);
+  }
+
+  /* 欠けている項目は補い、余計な項目は落とす。見出しか意味が空なら項目として認めない */
+  function sanitize(o) {
+    if (!o || typeof o !== "object") return null;
+    const pattern = text(o.pattern, 120);
+    const jp      = text(o.jp, 120);
+    if (!pattern || !jp) return null;
+
+    const ex = (Array.isArray(o.ex) ? o.ex : [])
+      .map(x => ({ en: text(x && x.en, 300), ja: text(x && x.ja, 300) }))
+      .filter(x => x.en || x.ja)
+      .slice(0, EX_MAX);
+
+    return {
+      id:      typeof o.id === "string" && /^[A-Za-z0-9_-]{1,40}$/.test(o.id) ? o.id : newId(),
+      pattern: pattern,
+      jp:      jp,
+      cat:     text(o.cat, 30) || MINE_FALLBACK_CAT,
+      level:   Object.prototype.hasOwnProperty.call(LEVEL_ORDER, o.level) ? o.level : "標準",
+      ex:      ex,
+      note:    text(o.note, 400, true),
+      keys:    (Array.isArray(o.keys) ? o.keys : []).map(k => text(k, 40)).filter(Boolean).slice(0, 12),
+      mine:    true
+    };
+  }
+
+  function loadMine() {
+    try {
+      const v = JSON.parse(localStorage.getItem(USER_KEY) || "[]");
+      if (!Array.isArray(v)) return [];
+      const seen = new Set(ENTRIES.map(e => e.id));
+      const out = [];
+      for (const raw of v) {
+        const e = sanitize(raw);
+        if (!e) continue;
+        if (seen.has(e.id)) e.id = newId();
+        seen.add(e.id);
+        out.push(e);
+      }
+      return out;
+    } catch (err) {
+      return [];
+    }
+  }
+
+  let mine = loadMine();   // 新しく作ったものが先頭
+
+  function saveMine() {
+    try {
+      localStorage.setItem(USER_KEY, JSON.stringify(mine));
+      return true;
+    } catch (err) {
+      // 容量オーバーなど。黙って消えると困るので呼び出し側に伝える
+      return false;
+    }
+  }
+
+  function isMine(id) { return mine.some(e => e.id === id); }
+
+  /* ===========================================================
      1. 文字の正規化
      全角→半角・カタカナ→ひらがな・大文字→小文字を
      「1文字は1文字のまま」変換する。長さが変わらないので、
@@ -94,20 +186,50 @@
     return out;
   }
 
-  /* 検索対象の文字列を項目ごとに前もって作っておく（毎回作ると重いので） */
-  const INDEX = ENTRIES.map((e, i) => {
-    const exText = e.ex.map(x => x.en + " " + x.ja).join(" ");
-    return {
-      entry: e,
-      order: i,
-      nPattern: norm(e.pattern),
-      nJp:      norm(e.jp),
-      nKeys:    norm((e.keys || []).join(" ")),
-      nCat:     norm(e.cat),
-      nEx:      norm(exText),
-      nNote:    norm(e.note || "")
-    };
-  });
+  /* 検索対象の文字列を項目ごとに前もって作っておく（毎回作ると重いので）。
+     自作の項目が増減したら作り直す。 */
+
+  let ALL = [];      // 収録データ ＋ 自作
+  let INDEX = [];    // 検索用。カテゴリ順に並べてある
+  let CATS = [];     // 表示するカテゴリ（data.js の順 → 自作で増えたぶん）
+
+  function buildCats() {
+    const out = CATEGORIES.slice();
+    for (const e of mine) if (out.indexOf(e.cat) === -1) out.push(e.cat);
+    return out;
+  }
+
+  function rebuild() {
+    ALL  = ENTRIES.concat(mine);
+    CATS = buildCats();
+
+    INDEX = ALL.map((e, i) => {
+      const exText = (e.ex || []).map(x => x.en + " " + x.ja).join(" ");
+      return {
+        entry: e,
+        order: i,
+        rank:  CATS.indexOf(e.cat),
+        nPattern: norm(e.pattern),
+        nJp:      norm(e.jp),
+        nKeys:    norm((e.keys || []).join(" ")),
+        nCat:     norm(e.cat),
+        nEx:      norm(exText),
+        nNote:    norm(e.note || "")
+      };
+    });
+
+    // 未入力時はカテゴリ順に読めるように。自作は同じカテゴリの末尾へ回す
+    INDEX.sort((a, b) =>
+      (a.rank - b.rank) ||
+      ((a.entry.mine ? 1 : 0) - (b.entry.mine ? 1 : 0)) ||
+      (a.order - b.order)
+    );
+    INDEX.forEach((r, i) => { r.order = i; });
+  }
+
+  rebuild();
+
+  function findEntry(id) { return ALL.find(e => e.id === id) || null; }
 
   /* ===========================================================
      2. 検索
@@ -137,8 +259,11 @@
 
   /* 絞り込み中の枠に入っている項目だけを、その枠の並び順で取り出す */
   function pickPool() {
-    if (currentCat === FAV_CAT || currentCat === HIST_CAT) {
-      const ids = currentCat === FAV_CAT ? favs : hist;   // 新しく登録したものが先頭
+    if (currentCat === FAV_CAT || currentCat === HIST_CAT || currentCat === MINE_CAT) {
+      // どれも「登録した順（新しいものが先頭）」に並べたい枠
+      const ids = currentCat === FAV_CAT ? favs
+                : currentCat === HIST_CAT ? hist
+                : mine.map(e => e.id);
       const byId = new Map(INDEX.map(r => [r.entry.id, r]));
       return ids.map(id => byId.get(id)).filter(Boolean);
     }
@@ -269,6 +394,7 @@
           '<div class="item__meta">' +
             '<span class="tag">' + esc(e.cat) + "</span>" +
             '<span class="tag lv--' + e.level + '">' + e.level + "</span>" +
+            (e.mine ? '<span class="tag tag--mine">自作</span>' : "") +
           "</div>" +
           (snip ? '<div class="item__snip">' + snip + "</div>" : "") +
         "</button>";
@@ -277,6 +403,7 @@
     $list.innerHTML = html;
     $empty.hidden = results.length > 0;
     $empty.innerHTML = emptyMessage();
+    $mytools.hidden = currentCat !== MINE_CAT;
 
     const q = raw.trim();
     if (!q) {
@@ -306,6 +433,7 @@
   function catLabel(c) {
     if (c === FAV_CAT) return "お気に入り";
     if (c === HIST_CAT) return "履歴";
+    if (c === MINE_CAT) return "マイ構文";
     return c;
   }
 
@@ -320,6 +448,11 @@
     if (!typing && currentCat === HIST_CAT) {
       return '<span class="empty__big">履歴はまだありません</span>' +
              '<span class="empty__sub">一度引いた構文が新しい順に並びます。</span>';
+    }
+    if (!typing && currentCat === MINE_CAT) {
+      return '<span class="empty__big">自作の構文はまだありません</span>' +
+             '<span class="empty__sub">上の <em>＋ 新しく作る</em> から、覚えたい構文を自分で足せます。<br>' +
+             "収録ぶんと同じように検索・お気に入り・関連表示の対象になります。</span>";
     }
     return '<span class="empty__big">見つかりませんでした</span>' +
            '<span class="empty__sub">別のことば、または一部だけで検索してみてください。<br>' +
@@ -365,7 +498,7 @@
 
   function related(entry) {
     const keys = new Set((entry.keys || []).map(norm));
-    const scored = ENTRIES
+    const scored = ALL
       .filter(e => e.id !== entry.id)
       .map((e, i) => {
         // 同じ文法分野を優先し、共有キーワードの数で細かく順位をつける
@@ -401,7 +534,14 @@
         '<div class="detail__meta">' +
           '<span class="tag lv--' + entry.level + '">' + entry.level + "</span>" +
           '<span class="tag">' + esc(entry.id) + "</span>" +
+          (entry.mine ? '<span class="tag tag--mine">自作</span>' : "") +
         "</div>" +
+        (entry.mine
+          ? '<div class="detail__own">' +
+              '<button type="button" class="mini" id="editThis">編集</button>' +
+              '<button type="button" class="mini mini--danger" id="delThis">削除</button>' +
+            "</div>"
+          : "") +
       "</div>";
 
     if (entry.ex && entry.ex.length) {
@@ -449,14 +589,257 @@
 
   /* 明示的に開いたときだけ履歴に残す（入力中の自動プレビューは残さない） */
   function openById(id, tokens) {
-    const e = ENTRIES.find(x => x.id === id);
+    const e = findEntry(id);
     if (!e) return;
     showDetail(e, tokens || [], true);
     pushHist(id);
   }
 
   /* ===========================================================
-     6. イベント
+     6. 自作の項目をつくる・直す・消す
+     =========================================================== */
+
+  const $exAdd = document.getElementById("exAdd");
+
+  function fld(id) { return document.getElementById(id); }
+
+  /* 例文1組ぶんの入力欄。DOM を組み立てて作るので、入れた文字がそのまま値になる */
+  function exRow(en, ja) {
+    const row = document.createElement("div");
+    row.className = "exrow";
+
+    const a = document.createElement("input");
+    a.type = "text";
+    a.className = "field__input field__input--en";
+    a.dataset.ex = "en";
+    a.placeholder = "英文";
+    a.maxLength = 300;
+    a.autocomplete = "off";
+    a.spellcheck = false;
+    a.value = en || "";
+
+    const b = document.createElement("input");
+    b.type = "text";
+    b.className = "field__input";
+    b.dataset.ex = "ja";
+    b.placeholder = "訳";
+    b.maxLength = 300;
+    b.autocomplete = "off";
+    b.value = ja || "";
+
+    const x = document.createElement("button");
+    x.type = "button";
+    x.className = "exrow__x";
+    x.textContent = "×";
+    x.setAttribute("aria-label", "この例文を消す");
+
+    row.appendChild(a);
+    row.appendChild(b);
+    row.appendChild(x);
+    return row;
+  }
+
+  function addExRow(en, ja) {
+    if ($exList.children.length >= EX_MAX) return;
+    $exList.appendChild(exRow(en, ja));
+    syncExAdd();
+  }
+
+  function syncExAdd() {
+    $exAdd.disabled = $exList.children.length >= EX_MAX;
+  }
+
+  function showErr(msg) {
+    $err.textContent = msg;
+    $err.hidden = false;
+  }
+
+  function openEditor(id) {
+    const e = id ? findEntry(id) : null;
+    editingId = (e && e.mine) ? e.id : null;
+
+    document.getElementById("editorTitle").textContent = editingId ? "構文を直す" : "構文をつくる";
+    $del.hidden = !editingId;
+    $err.hidden = true;
+
+    fld("f-pattern").value = e ? e.pattern : "";
+    fld("f-jp").value      = e ? e.jp : "";
+    fld("f-cat").value     = e ? e.cat : (CATEGORIES.indexOf(currentCat) !== -1 ? currentCat : "");
+    fld("f-level").value   = e ? e.level : "標準";
+    fld("f-note").value    = e ? (e.note || "") : "";
+    fld("f-keys").value    = e ? (e.keys || []).join(", ") : "";
+
+    $exList.innerHTML = "";
+    const ex = (e && e.ex && e.ex.length) ? e.ex : [{ en: "", ja: "" }];
+    ex.forEach(x => addExRow(x.en, x.ja));
+
+    // カテゴリは選んでも打ってもよい。候補は今あるものを並べる
+    $catList.innerHTML = "";
+    CATS.forEach(c => {
+      const o = document.createElement("option");
+      o.value = c;
+      $catList.appendChild(o);
+    });
+
+    if (typeof $editor.showModal === "function") $editor.showModal();
+    else $editor.setAttribute("open", "");     // dialog 非対応ブラウザ向け
+    fld("f-pattern").focus();
+  }
+
+  function closeEditor() {
+    if (typeof $editor.close === "function" && $editor.open) $editor.close();
+    else $editor.removeAttribute("open");
+    editingId = null;
+  }
+
+  function readForm() {
+    const ex = [];
+    $exList.querySelectorAll(".exrow").forEach(r => {
+      ex.push({
+        en: r.querySelector('[data-ex="en"]').value,
+        ja: r.querySelector('[data-ex="ja"]').value
+      });
+    });
+    return {
+      id:      editingId || undefined,
+      pattern: fld("f-pattern").value,
+      jp:      fld("f-jp").value,
+      cat:     fld("f-cat").value,
+      level:   fld("f-level").value,
+      ex:      ex,
+      note:    fld("f-note").value,
+      keys:    fld("f-keys").value.split(/[,、]/).map(s => s.trim()).filter(Boolean)
+    };
+  }
+
+  /* 中身が変わったら索引・チップ・一覧をまとめて作り直す */
+  function afterChange() {
+    rebuild();
+    renderChips();
+    render($q.value);
+  }
+
+  function setActiveById(id) {
+    const i = results.findIndex(r => r.rec.entry.id === id);
+    if (i >= 0) setActive(i);
+  }
+
+  function saveFromForm() {
+    const draft = readForm();
+    const e = sanitize(draft);
+    if (!e) { showErr("「構文（英語）」と「意味（日本語）」は必ず入れてください。"); return; }
+
+    const backup = mine.slice();
+    if (editingId) {
+      const i = mine.findIndex(x => x.id === editingId);
+      if (i === -1) { closeEditor(); afterChange(); return; }   // 別のタブで消された等
+      e.id = editingId;
+      mine[i] = e;
+    } else {
+      mine.unshift(e);
+    }
+
+    if (!saveMine()) {
+      mine = backup;
+      showErr("端末に保存できませんでした。ブラウザの保存容量がいっぱいかもしれません。");
+      return;
+    }
+
+    const savedId = e.id;
+    closeEditor();
+    afterChange();
+    const saved = findEntry(savedId);
+    if (saved) {
+      showDetail(saved, [], true);
+      setActiveById(savedId);
+    }
+  }
+
+  function removeMine(id) {
+    const e = findEntry(id);
+    if (!e || !e.mine) return;
+    if (!window.confirm("「" + e.pattern + "」を削除します。元に戻せません。よろしいですか。")) return;
+
+    const backup = mine.slice();
+    mine = mine.filter(x => x.id !== id);
+    if (!saveMine()) { mine = backup; window.alert("削除を保存できませんでした。"); return; }
+
+    // 消えた項目がお気に入りや履歴に残ると空振りするので、そちらからも外す
+    favs = favs.filter(x => x !== id); save("kobun.fav", favs);
+    hist = hist.filter(x => x !== id); save("kobun.hist", hist);
+
+    closeEditor();
+    if (selectedId === id) {
+      selectedId = null;
+      if (history.replaceState) history.replaceState(null, "", location.pathname + location.search);
+    }
+    afterChange();
+    if (!selectedId) showPlaceholder();
+  }
+
+  /* ---------- 書き出し・読み込み（端末を移るとき用） ---------- */
+
+  function exportMine() {
+    if (!mine.length) { window.alert("書き出せる自作の構文がまだありません。"); return; }
+    const body = JSON.stringify({
+      app: "構文辞書",
+      version: 1,
+      savedAt: new Date().toISOString(),
+      entries: mine
+    }, null, 2);
+
+    const url = URL.createObjectURL(new Blob([body], { type: "application/json" }));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "kobun-mine-" + new Date().toISOString().slice(0, 10) + ".json";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  function importMine(file) {
+    const reader = new FileReader();
+    reader.onload = () => {
+      let data;
+      try { data = JSON.parse(String(reader.result)); }
+      catch (err) { window.alert("読み込めませんでした。書き出したJSONファイルを選んでください。"); return; }
+
+      const list = Array.isArray(data) ? data
+                 : (data && Array.isArray(data.entries) ? data.entries : null);
+      if (!list) { window.alert("この形式のファイルは読み込めません。"); return; }
+
+      const baseIds = new Set(ENTRIES.map(e => e.id));
+      const kept = mine.slice();     // すでにあるぶん（同じIDなら上書きする）
+      const fresh = [];              // 新しく増えるぶん。ファイルの並びのまま先頭へ
+      let updated = 0;
+
+      for (const raw of list) {
+        const e = sanitize(raw);
+        if (!e) continue;
+        if (baseIds.has(e.id)) e.id = newId();          // 収録ぶんとIDがぶつからないように
+        const i = kept.findIndex(x => x.id === e.id);
+        if (i !== -1) { kept[i] = e; updated++; }        // 同じIDは新しい内容で上書き
+        else fresh.push(e);
+      }
+
+      const added = fresh.length;
+      if (!added && !updated) { window.alert("追加できる項目が見つかりませんでした。"); return; }
+      if (!window.confirm("新しく " + added + " 項目、上書き " + updated + " 項目を読み込みます。よろしいですか。")) return;
+
+      const backup = mine.slice();
+      mine = fresh.concat(kept);
+      if (!saveMine()) { mine = backup; window.alert("保存できませんでした。容量がいっぱいかもしれません。"); return; }
+
+      currentCat = MINE_CAT;
+      afterChange();
+    };
+    reader.onerror = () => window.alert("ファイルを読めませんでした。");
+    reader.readAsText(file);
+  }
+
+  /* ===========================================================
+     7. イベント
      =========================================================== */
 
   // 入力するたびに引き直す（辞書アプリのインクリメンタル検索）
@@ -483,15 +866,41 @@
     return b;
   }
 
-  const $favChip  = addChip(FAV_CAT, "★ お気に入り", "chip--special");
-  const $histChip = addChip(HIST_CAT, "履歴", "chip--special");
-  CATEGORIES.forEach(c => addChip(c, c));
+  let $favChip = null, $histChip = null, $mineChip = null;
+
+  /* 自作の項目でカテゴリが増減するので、チップは丸ごと作り直せるようにする */
+  function renderChips() {
+    const all = $filters.querySelector('.chip[data-cat="*"]');
+    $filters.innerHTML = "";
+    $filters.appendChild(all);
+
+    $favChip  = addChip(FAV_CAT,  "★ お気に入り", "chip--special");
+    $histChip = addChip(HIST_CAT, "履歴",        "chip--special");
+    $mineChip = addChip(MINE_CAT, "✎ マイ構文",  "chip--special");
+    CATS.forEach(c => addChip(c, c));
+
+    // 自作を消してカテゴリごと無くなることがあるので、選択中の枠が残っているか確かめる
+    let found = false;
+    $filters.querySelectorAll(".chip").forEach(c => {
+      const on = c.dataset.cat === currentCat;
+      if (on) found = true;
+      c.classList.toggle("is-on", on);
+    });
+    if (!found) { currentCat = "*"; all.classList.add("is-on"); }
+
+    updateChipCounts();
+  }
 
   function updateChipCounts() {
+    if (!$favChip) return;
     $favChip.textContent  = favs.length ? "★ お気に入り " + favs.length : "★ お気に入り";
     $histChip.textContent = hist.length ? "履歴 " + hist.length : "履歴";
+    $mineChip.textContent = mine.length ? "✎ マイ構文 " + mine.length : "✎ マイ構文";
+    $total.textContent    = ALL.length;
+    $mineNum.textContent  = mine.length ? "（うち自作 " + mine.length + "）" : "";
   }
-  updateChipCounts();
+
+  renderChips();
 
   $filters.addEventListener("click", e => {
     const chip = e.target.closest(".chip");
@@ -528,6 +937,9 @@
       return;
     }
 
+    if (e.target.closest("#editThis")) { openEditor(selectedId); return; }
+    if (e.target.closest("#delThis"))  { removeMine(selectedId); return; }
+
     const key = e.target.closest(".key");
     if (key) {
       $q.value = key.dataset.key;
@@ -562,26 +974,73 @@
     if (r) showDetail(r.rec.entry, r.tokens, false);
   }
 
+  // ---- 自作の項目まわり ----
+
+  $add.addEventListener("click", () => openEditor(null));
+
+  $mytools.addEventListener("click", e => {
+    const b = e.target.closest("[data-act]");
+    if (!b) return;
+    if (b.dataset.act === "new")         openEditor(null);
+    else if (b.dataset.act === "export") exportMine();
+    else if (b.dataset.act === "import") $file.click();
+  });
+
+  $file.addEventListener("change", () => {
+    const f = $file.files && $file.files[0];
+    if (f) importMine(f);
+    $file.value = "";     // 同じファイルをもう一度選べるように
+  });
+
+  $editor.addEventListener("click", e => {
+    if (e.target === $editor) { closeEditor(); return; }          // 背景をクリック
+    if (e.target.closest("[data-close]")) { closeEditor(); return; }
+    if (e.target.closest("#exAdd")) { addExRow("", ""); return; }
+
+    const x = e.target.closest(".exrow__x");
+    if (x) {
+      x.closest(".exrow").remove();
+      if (!$exList.children.length) addExRow("", "");   // 1組は必ず残す
+      syncExAdd();
+    }
+  });
+
+  $editor.addEventListener("close", () => { editingId = null; });
+
+  $del.addEventListener("click", () => { if (editingId) removeMine(editingId); });
+
+  $form.addEventListener("submit", e => { e.preventDefault(); saveFromForm(); });
+
+  // 入力欄で Enter を押したら保存（textarea は改行のまま）
+  $form.addEventListener("keydown", e => {
+    if (e.key === "Enter" && e.target.tagName === "INPUT") { e.preventDefault(); saveFromForm(); }
+  });
+
   // どこからでも検索欄へ
   document.addEventListener("keydown", e => {
+    if ($editor.open) return;          // フォームを開けている間は邪魔しない
     const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName);
     if ((e.key === "/" && !typing) || ((e.metaKey || e.ctrlKey) && e.key === "k")) {
       e.preventDefault();
       $q.focus();
       $q.select();
     }
+    if (e.key === "n" && !typing && !e.metaKey && !e.ctrlKey && !e.altKey) {
+      e.preventDefault();
+      openEditor(null);
+      return;
+    }
     if (e.key === "Escape") $detail.classList.remove("is-open");
   });
 
   /* ===========================================================
-     7. 起動
+     8. 起動
      =========================================================== */
 
-  $total.textContent = ENTRIES.length;
   render("");
 
   const hash = decodeURIComponent(location.hash.replace(/^#/, ""));
-  if (hash && ENTRIES.some(e => e.id === hash)) {
+  if (hash && findEntry(hash)) {
     openById(hash, []);
     const idx = results.findIndex(r => r.rec.entry.id === hash);
     if (idx >= 0) setActive(idx);
