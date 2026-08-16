@@ -114,6 +114,9 @@ open index.html      # Windows なら start index.html
 | `styles.css` | 見た目（ライト／ダーク両対応、スマホ対応） |
 | `data.js` | 見出しデータ 142項目 |
 | `app.js` | 検索・並べ替え・ハイライト・描画・お気に入り／履歴・自作項目の作成／編集／削除 |
+| `favicon-32.png` `favicon-192.png` | タブのアイコン（濃紺の角丸に「構」） |
+| `apple-touch-icon.png` `icon-512.png` | ホーム画面用アイコン（四隅まで塗り、端末側の角丸で欠けない余白つき） |
+| `site.webmanifest` | ホーム画面に追加したときの名前・色・アイコンの指定 |
 
 ## 収録範囲
 
